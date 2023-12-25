@@ -9,24 +9,26 @@ import {
   UseGuards,
   Controller,
   ParseIntPipe,
+  NotFoundException,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dtos/create-movie.dto';
 import { UpdateMovieDto } from './dtos/update-movie.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
+  ApiTags,
+  ApiQuery,
+  ApiParam,
+  ApiResponse,
   ApiBearerAuth,
   ApiConflictResponse,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { ListMoviesResponse } from './dtos/list-movies-response.dto';
 import { Serialize } from 'src/interceptors/serialize.interceptor';
-import { CurrentUser } from 'src/decorators/current-user.decorator';
-import { TCurrentUser } from '../auth/typings/current-user.type';
 import { MovieDto } from './dtos/movie.dto';
+import { ApiNotFoundResponseDto } from 'src/common/api-responses/ApiNotFoundResponseDto';
+import { MongodbIdValidationPipe } from './pipes/mongodbid-pipe';
 
 @ApiTags('Movie')
 @ApiBearerAuth()
@@ -36,8 +38,8 @@ export class MovieController {
   private logger = new Logger(MovieController.name);
   constructor(private readonly movieService: MovieService) {}
 
-  @Serialize(ListMoviesResponse)
   @Get()
+  @Serialize(ListMoviesResponse)
   @ApiResponse({
     status: 200,
     description: 'List of movies along with pagination info.',
@@ -48,9 +50,24 @@ export class MovieController {
   getMovies(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
-    @CurrentUser() currentUser: TCurrentUser,
   ) {
-    return this.movieService.listMovies(currentUser, page, limit);
+    return this.movieService.listMovies(page, limit);
+  }
+
+  @Serialize(MovieDto)
+  @Get(':movieId')
+  @ApiParam({ name: 'movieId', description: 'id of movie' })
+  @ApiResponse({ status: 200, type: MovieDto })
+  @ApiNotFoundResponse({ type: ApiNotFoundResponseDto })
+  async getMovieById(
+    @Param('movieId', MongodbIdValidationPipe) movieId: string,
+  ) {
+    const movie = await this.movieService.getMovieById(movieId);
+    if (!movie) {
+      throw new NotFoundException(`Movie with id ${movieId}" does not exists.`);
+    }
+
+    return movie;
   }
 
   @Serialize(MovieDto)
@@ -63,14 +80,11 @@ export class MovieController {
   @ApiConflictResponse({
     description: 'Movie with given title already exists.',
   })
-  createMovie(
-    @Body() createMovieDto: CreateMovieDto,
-    @CurrentUser() currentUser: TCurrentUser,
-  ) {
+  createMovie(@Body() createMovieDto: CreateMovieDto) {
     this.logger.log(
       `Creating new movie with payload = ${JSON.stringify(createMovieDto)}`,
     );
-    return this.movieService.createMovie(createMovieDto, currentUser);
+    return this.movieService.createMovie(createMovieDto);
   }
 
   @Serialize(MovieDto)
@@ -82,7 +96,7 @@ export class MovieController {
   })
   updateMovie(
     @Body() updateMovieDto: UpdateMovieDto,
-    @Param('movieId')
+    @Param('movieId', MongodbIdValidationPipe)
     movieId: string,
   ) {
     this.logger.log(

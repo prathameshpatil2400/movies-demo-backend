@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('/api');
   const config = new DocumentBuilder()
     .setTitle('Movies Crud Demo')
     .setDescription('Movies Crud Api Description')
@@ -21,11 +22,13 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);
+  SwaggerModule.setup('/api/api-docs', app, document);
 
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, stopAtFirstError: true }),
   );
-  await app.listen(3000);
+
+  app.enableCors();
+  await app.listen(3001);
 }
 bootstrap();

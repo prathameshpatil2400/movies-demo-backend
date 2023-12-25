@@ -1,7 +1,7 @@
 import {
+  Injectable,
   BadRequestException,
   ConflictException,
-  Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -9,7 +9,6 @@ import { Movie, MovieDocument } from './movie.schema';
 import { Model } from 'mongoose';
 import { CreateMovieDto } from './dtos/create-movie.dto';
 import { UpdateMovieDto } from './dtos/update-movie.dto';
-import { TCurrentUser } from '../auth/typings/current-user.type';
 
 @Injectable()
 export class MovieService {
@@ -17,7 +16,7 @@ export class MovieService {
     @InjectModel(Movie.name) private readonly movieModel: Model<MovieDocument>,
   ) {}
 
-  async createMovie(createMovieDto: CreateMovieDto, currentUser: TCurrentUser) {
+  async createMovie(createMovieDto: CreateMovieDto) {
     const isMovieExists = await this.movieModel.countDocuments({
       title: createMovieDto.title,
     });
@@ -30,15 +29,10 @@ export class MovieService {
 
     return this.movieModel.create({
       ...createMovieDto,
-      createdBy: currentUser._id,
     });
   }
 
-  async listMovies(
-    currentUser: TCurrentUser,
-    page: number = 1,
-    limit: number = 10,
-  ) {
+  async listMovies(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
     const totalMovies = await this.movieModel.countDocuments();
 
@@ -46,11 +40,7 @@ export class MovieService {
       throw new BadRequestException('Page does not exists');
     }
 
-    const movies = await this.movieModel
-      .find({ createdBy: currentUser._id })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const movies = await this.movieModel.find().skip(skip).limit(limit).lean();
 
     return {
       page,
@@ -60,15 +50,24 @@ export class MovieService {
     };
   }
 
-  async updateMovie(movieId: string, updateMovieDto: UpdateMovieDto) {
-    const isMovieExists = await this.movieModel.countDocuments({
-      title: updateMovieDto.title,
+  getMovieById(movieId: string) {
+    return this.movieModel.findOne({
+      _id: movieId,
     });
+  }
 
-    if (isMovieExists) {
-      throw new ConflictException(
-        `Movie with title : "${updateMovieDto.title}" already exists`,
-      );
+  async updateMovie(movieId: string, updateMovieDto: UpdateMovieDto) {
+    if (updateMovieDto.title) {
+      const isMovieExists = await this.movieModel.countDocuments({
+        title: updateMovieDto.title,
+        _id: { $ne: movieId },
+      });
+
+      if (isMovieExists) {
+        throw new ConflictException(
+          `Movie with title : "${updateMovieDto.title}" already exists`,
+        );
+      }
     }
 
     const updatedMovie = await this.movieModel.findOneAndUpdate(

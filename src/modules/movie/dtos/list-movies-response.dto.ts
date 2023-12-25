@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MovieDto } from './movie.dto';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 export class ListMoviesResponse {
   @ApiProperty({ description: 'Current page number.' })
@@ -13,6 +13,7 @@ export class ListMoviesResponse {
 
   @ApiProperty({ description: 'List of movies.', type: [MovieDto] })
   @Expose()
+  @Type(() => MovieDto)
   movies: MovieDto[];
 
   @ApiProperty({ description: 'Total available pages of movies.' })

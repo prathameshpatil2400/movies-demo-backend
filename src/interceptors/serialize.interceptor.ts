@@ -19,6 +19,7 @@ export class SerializeInterceptor implements NestInterceptor {
       map((data: IClassConstructor) => {
         return plainToInstance(this.dto, data, {
           excludeExtraneousValues: true,
+          enableImplicitConversion: true
         });
       }),
     );
