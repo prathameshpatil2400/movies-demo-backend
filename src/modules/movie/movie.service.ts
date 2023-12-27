@@ -40,7 +40,7 @@ export class MovieService {
       throw new BadRequestException('Page does not exists');
     }
 
-    const movies = await this.movieModel.find().skip(skip).limit(limit).lean();
+    const movies = await this.movieModel.find().sort('-_id').skip(skip).limit(limit).lean();
 
     return {
       page,
