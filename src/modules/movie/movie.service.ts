@@ -18,7 +18,7 @@ export class MovieService {
 
   async createMovie(createMovieDto: CreateMovieDto) {
     const isMovieExists = await this.movieModel.countDocuments({
-      title: createMovieDto.title,
+      title: new RegExp(createMovieDto.title, 'ig'),
     });
 
     if (isMovieExists) {
@@ -40,7 +40,12 @@ export class MovieService {
       throw new BadRequestException('Page does not exists');
     }
 
-    const movies = await this.movieModel.find().sort('-_id').skip(skip).limit(limit).lean();
+    const movies = await this.movieModel
+      .find()
+      .sort('-_id')
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
     return {
       page,
@@ -59,7 +64,7 @@ export class MovieService {
   async updateMovie(movieId: string, updateMovieDto: UpdateMovieDto) {
     if (updateMovieDto.title) {
       const isMovieExists = await this.movieModel.countDocuments({
-        title: updateMovieDto.title,
+        title: new RegExp(updateMovieDto.title, 'ig'),
         _id: { $ne: movieId },
       });
 
